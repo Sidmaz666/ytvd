@@ -65,4 +65,4 @@ Some Geo Restricted/Age Restricted Videos URL doesn't doesn't work, can't Stream
 
 <i><b>(Talking My Mind Here... 🧠)</b></i>
 
-Yes, because I'm using it and it is personalized to my liking. Most of the features I would want from YouTube while using it from a GUI Web Browser is present here. I know <b>ytfzf</b> exists, it's a great script no doubt, but I'm a student learning on web, Linux about computer in general and so though it would be nice to make one script personalized to mine needs so I don't have to worry about changing of variables in <i>config</i> file.
+Yes, because I'm using it and it is personalized to my liking. Most of the features I would want from YouTube while using it from a GUI Web Browser is present here. I know <b>ytfzf</b> exists, it's a great script no doubt, but I'm a student learning on web, Linux about computer in general and so thought it would be nice to make one script personalized to mine needs so I don't have to worry about changing of variables in <i>config</i> file.
