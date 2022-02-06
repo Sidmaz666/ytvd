@@ -1,0 +1,274 @@
+#!/bin/bash
+
+[[ -z "$@" ]] && read -r -p "Search  " query || query="$@"
+
+page_number=1
+
+tmp="/tmp/ytvd"
+
+showReco=0
+
+[[ ! -d "$tmp" ]] && mkdir -p $tmp
+ 
+clean (){
+rm -Rf $tmp/pure $tmp/list $tmp/videos > /dev/null 2>&1
+}
+
+search_func()
+{
+
+query="$(sed 's/[[:space:]]/+/g' <<< "$query")"
+
+[[ -z "$query" ]] && exit
+
+
+if [ "$showReco" -gt 0 ] ; then
+
+search_url="https://vid.puffyan.us/api/v1/videos/$(head -n1 $tmp/forsugg)"
+
+curl -s "$search_url" > $tmp/pure
+
+( jq '.[]' $tmp/pure | jq '.[].types' | sed 's/"//g' > $tmp/types ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/types
+
+( jq '.[]' $tmp/pure | jq '.[].title' |  sed -e 's/"//g' \
+  -e 's/\\//g' -e 's/w\///g'  > $tmp/titles ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/titles
+
+( jq '.[]' $tmp/pure | jq '.[].videoId' | sed 's/"//g' > $tmp/videoId ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/videoId
+
+( jq '.[]' $tmp/pure | jq '.[].author' | sed 's/"//g'  > $tmp/aurthors ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/aurthors
+
+(jq '.[]' $tmp/pure | jq '.[].aurthorId' | sed 's/"//g'  > $tmp/aurthorId ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/aurthorId
+
+( jq '.[]' $tmp/pure | jq '.[].authorUrl' | sed 's/"//g'  > $tmp/aurthorUrl ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/aurthorUrl
+
+(jq '.[]' $tmp/pure | jq '.[].description' | sed -e 's/"//g' > $tmp/description ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/description
+
+(jq '.[]' $tmp/pure | jq '.[].viewCount' > $tmp/views ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/views
+
+(jq '.[]' $tmp/pure | jq '.[].lengthSeconds' > $tmp/duration ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/duration
+
+(jq '.[]' $tmp/pure | jq '.[].publishedText' |sed 's/"//g' > $tmp/uploadTime ) > /dev/null 2>&1
+
+sed -i '/^null$/d' $tmp/uploadTime
+
+else
+
+search_url="https://vid.puffyan.us/api/v1/search?q=$query&page=$page_number&pretty=1" 
+
+curl -s "$search_url" > $tmp/pure
+
+jq '.[].type' $tmp/pure | sed -e 's/"//g' > $tmp/types
+
+jq '.[].title' $tmp/pure | sed -e 's/"//g' \
+  -e 's/\\//g' -e 's/w\///g'  > $tmp/titles
+
+jq '.[].videoId' $tmp/pure | sed 's/"//g' > $tmp/videoId
+
+jq '.[].author' $tmp/pure | sed 's/"//g'  > $tmp/aurthors
+
+jq '.[].authorId' $tmp/pure | sed 's/"//g'  > $tmp/aurthorId
+
+jq '.[].authorUrl' $tmp/pure | sed 's/"//g'  > $tmp/aurthorUrl
+
+jq '.[].description' $tmp/pure | sed -e 's/"//g' > $tmp/description
+
+jq '.[].viewCount' $tmp/pure > $tmp/views
+
+jq '.[].lengthSeconds' $tmp/pure > $tmp/duration
+
+jq '.[].publishedText' $tmp/pure | sed 's/"//g' > $tmp/uploadTime
+
+fi
+
+for i in $(cat $tmp/duration)  
+do 
+  conversion="$(printf '%dh:%dm:%ds ' $((i/3600)) $((i%3600/60)) $((i%60)))"
+  sed -i "s/$i/$conversion/g" $tmp/duration 
+done
+
+files="$(ls -F $tmp | grep -v /)"
+
+org_path="$PWD"
+
+cd $tmp
+
+sed -i '/^null$/d' $files
+
+sed -i '/^category$/d' $files
+
+cd $org_path
+
+
+total_titles="$(wc -l $tmp/titles | awk '{print $1}')"
+
+[[ ! -d $tmp/list ]] && mkdir -p $tmp/list
+
+for x in $(seq 1 $total_titles)
+do
+  title="$(head -n$x $tmp/titles | tail -n1)"
+  types="$(head -n$x $tmp/types | tail -n1)"
+  duration="$(head -n$x $tmp/duration | tail -n1)"
+  author="$(head -n$x $tmp/aurthors | tail -n1)"
+  views="$(head -n$x $tmp/views | tail -n1)"
+  uploadtime="$(head -n$x $tmp/uploadTime | tail -n1)"
+  rm "$tmp/list/$x $title" > /dev/null 2>&1
+  ( echo -e "Title: $title\nType: $types\nDuration: $duration\nChannel: $author\nViews: $views\nUploaded on: $uploadtime\n" > "$tmp/list/$x $title" ) > /dev/null 2>&1 
+done
+
+echo "Visit Next Page $(($page_number+1))" > "$tmp/list/Next Page $(($page_number+1))"
+
+echo "Search On YouTube Again!" > "$tmp/list/Search Again"
+
+[[ "$page_number" > 1 ]] && \
+  echo "Back To the Previous Page $(($page_number-1))" > "$tmp/list/Previous Page $(($page_number-1))"
+
+org_path="$PWD"
+
+cd $tmp/list
+
+video_select=$(ls -v | sort -V | fzf --no-info --layout=reverse \
+  --header-first --cycle \
+  --header="Search: [$(echo "$query" | sed 's/+/ /g')], Total: [$total_titles], Page: [$page_number]" --preview "cat {}" )
+
+video_selected="$( echo "$video_select" | awk '{print $1}')"
+
+video_select="$(echo "$video_select" | sed 's/^[0-9]//g')"
+
+cd $org_path
+
+[[ -z "$video_selected" ]] && clean && exit
+
+[[ "$video_selected" = "Next" ]] && clean && page_number="$(($page_number+1))" && search_func
+
+[[ "$video_selected" = "Previous" ]] && clean && page_number="$(($page_number-1))" && search_func
+
+[[ "$video_selected" = "Search" ]] && clean && page_number=1 && read -r -p "Search " query && search_func
+
+get_videoId_for_selected="$(head -n$video_selected $tmp/videoId | tail -n1)"
+
+echo "$get_videoId_for_selected" > $tmp/forsugg
+
+[[ ! -d "$tmp/videos" ]] && mkdir -p "$tmp/videos"
+
+curl -s "https://vid.puffyan.us/api/v1/videos/$get_videoId_for_selected" > $tmp/videos/pure
+
+(jq '.adaptiveFormats[].url' $tmp/videos/pure | sed 's/"//g' > $tmp/videos/url  ) > /dev/null 2>&1
+
+(jq '.adaptiveFormats[].container' $tmp/videos/pure | sed 's/"//g' > $tmp/videos/container ) > /dev/null 2>&1
+
+(jq '.adaptiveFormats[].type' $tmp/videos/pure | sed 's/"//g' > $tmp/videos/types ) > /dev/null 2>&1
+
+(jq '.adaptiveFormats[].encoding' $tmp/videos/pure  | sed 's/"//g' > $tmp/videos/encoding ) > /dev/null 2>&1
+
+(jq '.adaptiveFormats[].resolution' $tmp/videos/pure  | sed 's/"//g' > $tmp/videos/resolution ) > /dev/null 2>&1
+
+
+sed -i 's/null//g' $tmp/videos/resolution 
+sed -i 's/null/unknown/g' $tmp/videos/encoding 
+sed -i 's/null/unknown/g' $tmp/videos/container 
+
+total_formats="$(wc -l $tmp/videos/container | awk '{print $1}')"
+
+[[ ! -d $tmp/videos/list ]] && mkdir -p $tmp/videos/list
+
+for x in $(seq 1 $total_formats)
+do
+  formats="$(head -n$x $tmp/videos/container | tail -n1)"
+  types="$(head -n$x $tmp/videos/types | tail -n1)"
+  encoding="$(head -n$x $tmp/videos/encoding | tail -n1)"
+  resolution="$(head -n$x $tmp/videos/resolution | tail -n1)"
+  rm "$tmp/videos/$x $formats $resolution" > /dev/null 2>&1
+  ( echo -e "Type: $types \nEncoding: $encoding\nResolution: $resolution\nExtension: $formats\n" > "$tmp/videos/list/$x $formats $resolution" ) > /dev/null 2>&1 
+done
+
+echo "Search Again" > "$tmp/videos/list/Search Youtube"
+
+echo "Show Suggestions Based on the Selected Video" > "$tmp/videos/list/Show Recommended"
+
+echo "Go Back To Search Result" > "$tmp/videos/list/Back"
+
+
+cd $tmp/videos/list
+
+video_format_select=$(ls -v | sort -V | fzf --no-info --layout=reverse \
+  --header-first --cycle \
+  --header="Selected: [$(echo "$video_select" )], Total Available Formats: [$total_formats]" --preview "cat {}" )
+
+video_format_selected=$(echo "$video_format_select" | awk '{print $1}')
+
+
+cd $org_path
+
+[[ -z "$video_format_selected" ]] && clean && exit
+
+[[ "$video_format_selected" = "Search" ]] && clean && page_number=1 && read -r -p "Search  " query && search_func
+
+[[ "$video_format_selected" = "Back" ]] && clean && search_func
+
+[[ "$video_format_selected" = "Show" ]] && clean && showReco=1 && search_func || showReco=0
+
+playoordwn=$(echo -e "Play\nDownload\nUrl" | fzf --no-info --layout=reverse --header-first --cycle \
+  --no-preview --disabled \
+  --header="Format-Selected: [$( echo $video_format_select | awk '{print $2}')]" )
+
+[[ -z "$playoordwn" ]] && exit
+
+case $playoordwn in
+      Play)
+	(pkill -f ytvd_mpv > /dev/null 2>&1)
+	notify-send "Currently Playing" "$video_select" -t 2500
+	(nohup mpv --really-quiet --title="ytvd_mpv" "$(head -n$video_format_selected $tmp/videos/url | tail -n1 )" \
+	  --audio-file="$(head -n1 $tmp/videos/url)" & > /dev/null 2>&1 && disown > /dev/null 2>&1) > /dev/null 2>&1
+	rm -Rf $tmp/list 
+	search_func
+	;;
+      Download)
+	notify-send "Downloading in Background" "$video_select in $HOME/Videos/ytvd" -t 5000
+	cd $HOME/Videos
+	[[ ! -d ytvd ]] && mkdir -p ytvd
+	cd $HOME/Videos/ytvd
+	download_func()
+	{
+	curl -Lfs $(head -n$video_format_selected $tmp/videos/url | tail -n1) -o "a_$video_select.$(head -n$video_format_selected $tmp/videos/container | tail -n1)" 
+	curl -Lfs $(head -n1 $tmp/videos/url | tail -n1) -o "b_$video_select.m4a" 
+	
+	 ffmpeg -hide_banner -i "a_$video_select.$(head -n$video_format_selected $tmp/videos/container | tail -n1)" \
+	   -i "b_$video_select.m4a" "$video_select.$(head -n$video_format_selected $tmp/videos/container | tail -n1)" > /dev/null 2>&1 && disown > /dev/null 2>&1 
+
+	notify-send "Download Complete!" "$video_select in $HOME/Videos/ytvd" -t 5000
+
+	rm  "a_$video_select.$(head -n$video_format_selected $tmp/videos/container | tail -n1)"  "b_$video_select.m4a" > /dev/null 2>&1
+		}
+	download_func & > /dev/null 2>&1
+	cd $org_path
+	rm -Rf $tmp/list
+	search_func
+	;;
+      Url)
+	echo -e "Video: $(head -n$video_format_selected $tmp/videos/url | tail -n1) \n"
+	echo "Audio: $(head -n1 $tmp/videos/url | tail -n1)"
+	;;
+	*)
+	  exit
+      esac
+}
+	clean
+ 	search_func
