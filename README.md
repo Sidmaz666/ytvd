@@ -16,8 +16,12 @@ A Tool To Browse/Search, Stream and Download YouTube Videos From Terminal. The s
 
 # Basic Installation
 
+		git clone https://github.com/sidmaz666/ytvd.git
+		cd ytvd
 		sudo cp ytvd /usr/bin
-		
+###
+		sudo curl -Ls https://raw.githubusercontent.com/Sidmaz666/ytvd/main/ytvd -O > /usr/bin/ytvd
+
 
 # What Does the Script Provide?
 
