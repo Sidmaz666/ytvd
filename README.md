@@ -59,7 +59,7 @@ Sort By <b><i>Relevance, Rating, Upload Date & Views</i></b>
 
 # Annoyance
 
-Geo Restricted/Age Restricted Videos URL doesn't doesn't work, can't Stream or Download. 🙂
+Some Geo Restricted/Age Restricted Videos URL doesn't doesn't work, can't Stream or Download. 🙂
 
 # Is there any need of this script?
 
