@@ -6,6 +6,8 @@ page_number=1
 
 tmp="/tmp/ytvd"
 
+rm -Rf $tmp > /dev/null 2>&1
+
 showReco=0
 
 [[ ! -d "$tmp" ]] && mkdir -p $tmp
@@ -154,7 +156,7 @@ video_select="$(echo "$video_select" | sed 's/^[0-9]//g')"
 
 cd $org_path
 
-[[ -z "$video_selected" ]] && clean && exit
+[[ -z "$video_selected" ]] && clean && rm -Rf $tmp > /dev/null 2>&1 && exit
 
 [[ "$video_selected" = "Next" ]] && clean && page_number="$(($page_number+1))" && search_func
 
@@ -217,7 +219,7 @@ video_format_selected=$(echo "$video_format_select" | awk '{print $1}')
 
 cd $org_path
 
-[[ -z "$video_format_selected" ]] && clean && exit
+[[ -z "$video_format_selected" ]] && clean && rm -Rf $tmp > /dev/null 2>&1 && exit
 
 [[ "$video_format_selected" = "Search" ]] && clean && page_number=1 && read -r -p "Search  " query && search_func
 
@@ -229,7 +231,7 @@ playoordwn=$(echo -e "Play\nDownload\nUrl" | fzf --no-info --layout=reverse --he
   --no-preview --disabled \
   --header="Format-Selected: [$( echo $video_format_select | awk '{print $2}')]" )
 
-[[ -z "$playoordwn" ]] && exit
+[[ -z "$playoordwn" ]] && rm $tmp > /dev/null 2>&1 && exit
 
 case $playoordwn in
       Play)
@@ -263,12 +265,13 @@ case $playoordwn in
 	search_func
 	;;
       Url)
-	echo -e "Video: $(head -n$video_format_selected $tmp/videos/url | tail -n1) \n"
+	echo "Video: $(head -n$video_format_selected $tmp/videos/url | tail -n1)"
 	echo "Audio: $(head -n1 $tmp/videos/url | tail -n1)"
 	;;
 	*)
+	  rm -Rf $tmp
 	  exit
       esac
 }
-	clean
- 	search_func
+
+	search_func
